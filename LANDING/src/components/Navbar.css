@@ -1,12 +1,25 @@
 /* Navbar Styles */
 .navbar {
   position: fixed;
-  top: 0;
-  width: 100%;
+  top: 1rem;
+  left: 1rem;
+  right: 1rem;
   z-index: 1000;
-  padding: 1rem 0;
-  background: rgba(4, 30, 20, 0.85);
-  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 0.75rem 0;
+  background: rgba(6, 18, 12, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 255, 157, 0.2);
+  border-radius: 100px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 255, 157, 0.05);
+  transition: all 0.3s ease;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+.navbar:hover {
+  border-color: rgba(0, 255, 157, 0.4);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 255, 157, 0.1);
 }
 
 .navbar-container {

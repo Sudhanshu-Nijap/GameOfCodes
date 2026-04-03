@@ -11,8 +11,8 @@ const Hero = () => {
             AI-powered threat intelligence platform that helps organizations detect leaked credentials, exposed databases, and hidden sensitive data from dark web sources.
           </p>
           <div className="hero-buttons">
-            <button className="btn btn-primary">Get Started</button>
-            <button className="btn btn-secondary">Request Demo</button>
+            <button className="btn btn-primary px-8 mr-4">Get Started</button>
+            <button className="btn btn-secondary px-8">Request Demo</button>
           </div>
         </div>
         

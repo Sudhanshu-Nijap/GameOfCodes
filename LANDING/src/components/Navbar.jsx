@@ -7,7 +7,7 @@ const Navbar = () => {
     <nav className="navbar glass-panel">
       <div className="navbar-container container">
         <Link to="/" className="navbar-logo" style={{ textDecoration: 'none' }}>
-          <span className="logo-icon">💠</span>
+          <img src="/favicon.svg" alt="Logo" className="nav-logo-img" />
           <span className="logo-text">WhiteDUMP</span>
         </Link>
         
@@ -20,7 +20,7 @@ const Navbar = () => {
 
         <div className="navbar-actions">
           <Link to="/login" className="nav-link">Login</Link>
-          <Link to="/signup" className="btn btn-primary btn-sm">Sign Up</Link>
+          <Link to="/signup" className="btn btn-primary btn-sm px-6">Sign Up</Link>
         </div>
       </div>
     </nav>

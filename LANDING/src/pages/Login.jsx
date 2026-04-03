@@ -1,5 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import '../Auth.css';
+import '../App.css';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -18,7 +20,7 @@ const Login = () => {
       
       <div className="auth-card premium-glass">
         <Link to="/" className="auth-logo">
-          <span className="logo-icon">💠</span>
+          <img src="/favicon.svg" alt="WhiteDUMP Logo" className="auth-logo-img" />
           <span className="logo-text">WhiteDUMP</span>
         </Link>
         <h2 className="auth-title">Welcome Back</h2>

@@ -9,8 +9,8 @@ const CTA = () => {
           Detect threats early and stay ahead of potential data breaches with AI-powered intelligence.
         </p>
         <div className="cta-buttons">
-          <button className="btn btn-primary mr-4">Sign Up</button>
-          <button className="btn btn-secondary">Contact Us</button>
+          <button className="btn btn-primary px-8 mr-6">Sign Up Now</button>
+          <button className="btn btn-secondary px-8">Contact Sales</button>
         </div>
       </div>
     </section>

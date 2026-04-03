@@ -5,11 +5,11 @@ import Features from '../components/Features';
 import HowItWorks from '../components/HowItWorks';
 import DashboardPreview from '../components/DashboardPreview';
 import Pricing from '../components/Pricing';
-import About from '../components/About';
+import ExpertAccess from '../components/ExpertAccess';
 import CTA from '../components/CTA';
 import Footer from '../components/Footer';
 
-function LandingPage() {
+const LandingPage = () => {
   return (
     <div className="app-container">
       <Navbar />
@@ -19,12 +19,12 @@ function LandingPage() {
         <HowItWorks />
         <DashboardPreview />
         <Pricing />
-        <About />
+        <ExpertAccess />
         <CTA />
       </main>
       <Footer />
     </div>
   );
-}
+};
 
 export default LandingPage;

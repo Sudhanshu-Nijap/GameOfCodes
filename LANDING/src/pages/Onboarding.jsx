@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, ShieldAlert, Cpu, Terminal, Activity, Zap, Wallet, ChevronLeft, ChevronRight } from 'lucide-react';
+import '../Auth.css';
+import '../App.css';
 
 const Onboarding = () => {
   const [step, setStep] = useState(1);
@@ -108,7 +110,7 @@ const Onboarding = () => {
   const handlePrev = () => setStep(s => Math.max(s - 1, 1));
   const handleComplete = () => {
     addLog("Environment finalized. Accessing high-clearance console.");
-    setTimeout(() => navigate('/'), 1000);
+    setTimeout(() => navigate('/dashboard'), 1000);
   };
 
   return (

@@ -1,2 +1,0 @@
-N8N_WEBHOOK_URL=https://sudhanshunijap.app.n8n.cloud/webhook-test/46926d86-c921-4cc6-ae6d-ba8607d28a29
-DEFAULT_DISCORD_WEBHOOK=https://discord.com/api/webhooks/1484964725736476674/lGsDM8EWfQ9AKiL7eC0lA0jz2CxtMyIa3EPKfTInx-GH6VNQjYZZfXSU0npPQc8voKoT

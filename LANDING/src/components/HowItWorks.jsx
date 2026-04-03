@@ -1,32 +1,70 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { User, MessageSquare, Cpu, Search, Activity, AlertTriangle } from 'lucide-react';
 
 const steps = [
-  { step: "Step 1", title: "Organization Registration", desc: "Sign up and get verified by the admin to access the platform." },
-  { step: "Step 2", title: "Enter Your Query", desc: "Describe what data you want to monitor using natural language." },
-  { step: "Step 3", title: "AI Processing", desc: "The system extracts keywords, expands context, and prepares search queries." },
-  { step: "Step 4", title: "Dark Web Discovery", desc: "Searches across indexed .onion sources for relevant results." },
-  { step: "Step 5", title: "Data Analysis", desc: "Extracts and analyzes content for sensitive or leaked data." },
-  { step: "Step 6", title: "Insights & Alerts", desc: "View results in a dashboard with risk scores and actionable insights." }
+  { step: "01", title: "Registration", desc: "Fast-track verification and onboarding for your organization.", icon: <User size={24} /> },
+  { step: "02", title: "Intelligence Query", desc: "Submit natural language queries to monitor your digital assets.", icon: <MessageSquare size={24} /> },
+  { step: "03", title: "Automated Search", desc: "Our AI-powered engine scans indexed world-wide deep web sources.", icon: <Search size={24} /> },
+  { step: "04", title: "Actionable Insights", desc: "Receive real-time alerts and detailed risk reports via our dashboard.", icon: <Activity size={24} /> }
 ];
 
 const HowItWorks = () => {
+  const stepRefs = useRef([]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentRefs = stepRefs.current;
+    currentRefs.forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => {
+      currentRefs.forEach((ref) => {
+        if (ref) observer.unobserve(ref);
+      });
+    };
+  }, []);
+
   return (
-    <section id="how-it-works" className="timeline-section py-20">
+    <section id="how-it-works" className="timeline-section py-20 relative overflow-hidden">
       <div className="container">
         <h2 className="section-title text-center">How It Works</h2>
-        <div className="timeline">
+        <p className="section-subtitle text-center mb-16">Our streamlined process for deep web threat intelligence.</p>
+        
+        <div className="timeline-v2">
           {steps.map((s, idx) => (
-            <div key={idx} className="timeline-item">
-              <div className="timeline-dot"></div>
-              <div className="timeline-content">
-                <span className="step-label">{s.step}</span>
-                <h4 className="step-title">{s.title}</h4>
-                <p className="step-desc">{s.desc}</p>
+            <div 
+              key={idx} 
+              className="timeline-step reveal" 
+              ref={el => stepRefs.current[idx] = el}
+              style={{ transitionDelay: `${idx * 0.1}s` }}
+            >
+              <div className="step-number-box">
+                <div className="step-icon-bg">{s.icon}</div>
+                <div className="step-line"></div>
+              </div>
+              <div className="step-content-card glass-panel">
+                <span className="step-badge">{s.step}</span>
+                <h4 className="step-title-v2">{s.title}</h4>
+                <p className="step-desc-v2">{s.desc}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
+      
+      {/* Decorative Background Element */}
+      <div className="bg-glow-blur" style={{ top: '20%', right: '-10%', background: 'rgba(0, 255, 157, 0.03)' }}></div>
     </section>
   );
 };
