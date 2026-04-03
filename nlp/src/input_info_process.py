@@ -1,11 +1,15 @@
 import os
 from groq import Groq
 from dotenv import load_dotenv
+from flask import Flask, request, jsonify
 load_dotenv()
 import json
 api_key = os.getenv("GROQ_API_KEY")
 
 client = Groq(api_key=api_key)
+
+
+app = Flask(__name__)
 
 SYSTEM_PROMPT = """
 You are an organization data breach analyzer.
@@ -58,7 +62,16 @@ def input_info_process(user_input):
     except json.JSONDecodeError:
         return {"error": "Invalid JSON", "raw": raw}
 
-text = """
+@app.route('/process-input', methods=['POST'])
+def process_input():
+    body = request.get_json()
 
-"""
-print(json.dumps(input_info_process(text), indent=2))
+    if not body or 'text' not in body:
+        return jsonify({"error": "Missing 'text' field in request body"}), 400
+
+    result = input_info_process(body['text'])
+    return jsonify(result)
+
+
+if __name__ == '__main__':
+    app.run(port=5003, debug=True)
