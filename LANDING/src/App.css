@@ -597,9 +597,9 @@
 
 .main-footer {
   background: linear-gradient(to right, #020617, #064E3B);
-  padding-top: 8rem;
+  padding-top: 3rem;
   /* Space for the overlapping block */
-  padding-bottom: 2rem;
+  padding-bottom: 1.5rem;
   color: var(--text-muted);
 }
 

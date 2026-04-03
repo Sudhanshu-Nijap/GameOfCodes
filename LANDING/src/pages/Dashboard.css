@@ -167,6 +167,84 @@
   gap: 1.5rem;
 }
 
+.connect-wallet-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 255, 157, 0.05);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  padding: 0.625rem 1.25rem;
+  border-radius: 10px;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.connect-wallet-btn:hover {
+  background: rgba(0, 255, 157, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.2);
+}
+
+.connect-wallet-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.connected-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.625rem 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.75rem;
+  font-family: 'Inter', monospace;
+  color: #fff;
+}
+
+.connection-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--primary);
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+/* Intelligence Query Center Badges */
+.quota-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border-left: 2px solid var(--primary);
+}
+
+.quota-badge .val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.quota-badge .lbl {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #8899a6;
+  letter-spacing: 1px;
+}
+
 .icon-btn {
   background: none;
   border: none;
@@ -291,6 +369,55 @@
 .execute-btn:hover {
   transform: scale(1.02);
   box-shadow: 0 0 30px rgba(0, 255, 157, 0.4);
+}
+
+.execute-btn.authenticating, .execute-btn.pending {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: wait;
+}
+
+.execute-btn.success {
+  background: rgba(0, 255, 157, 0.1);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  cursor: default;
+}
+
+.execute-btn.error {
+  background: rgba(255, 63, 63, 0.1);
+  border: 1px solid #f43f5e;
+  color: #f43f5e;
+}
+
+.error-note {
+  background: rgba(244, 63, 94, 0.05);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  font-size: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.error-note .label {
+  color: #f43f5e;
+  font-weight: 700;
+}
+
+.error-note .msg {
+  color: #ff9999;
+  font-family: monospace;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* User Cards Grid */

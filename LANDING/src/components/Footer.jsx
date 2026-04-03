@@ -3,7 +3,7 @@ import { Mail, Phone, MapPin, Video, ExternalLink, Send } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="main-footer pt-20 pb-10 bg-black/50 border-t border-white/5">
+    <footer className="main-footer pt-8 pb-6 bg-black/50 border-t border-white/5">
       <div className="container">
         
         <div className="footer-bottom">

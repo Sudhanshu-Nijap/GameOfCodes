@@ -1,5 +1,4 @@
 import React from 'react';
-import { Shield, Search, Zap, Eye, Code, Lock } from 'lucide-react';
 
 const Hero = () => {
   return (
@@ -15,11 +14,7 @@ const Hero = () => {
             <button className="btn btn-secondary px-8">Request Demo</button>
           </div>
         </div>
-        
-        {/* Radar visual removed as per user request */}
       </div>
-      
-      {/* Stats overlapping from the mockup could be added here if desired, but not strictly in the text, so let's keep it simple or add generic ones */}
     </section>
   );
 };
