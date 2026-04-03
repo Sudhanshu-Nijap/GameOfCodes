@@ -1,0 +1,48 @@
+{
+  "leak_patterns": {
+    "credentials": {
+      "password_labeled": "r'(?i)(?:password|passwd|pwd|pass|pin)[\\s:=]+[^\\s,;]+'",
+      "username_labeled": "r'(?i)(?:username|user|login|account)[\\s:=]+[^\\s,;]+'",
+      "user_pass_pair": "r'([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[A-Z|a-z]{2,})[\\s:=]+([^\\s,;]+)'"
+    },
+    "emails": {
+      "email_labeled": "r'(?i)(?:email|e-mail|mail)[\\s:=]+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[A-Z|a-z]{2,}'",
+      "email_generic": "r'\\b[A-Za-z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[A-Z|a-z]{2,}\\b'"
+    },
+    "databases": {
+      "database_labeled": "r'(?i)(?:database|db_user|db_pass|db_name|db|host)[\\s:=]+[^\\s,;]+'",
+      "mongodb": "r'(?i)mongodb(?:\\+srv)?://(?:[^:]+:[^@]+@)?[^/\\s]+(?:/[^?\\s]+)?'",
+      "mysql": "r'(?i)mysql://(?:[^:]+:[^@]+@)?[^/\\s]+(?:/[^?\\s]+)?'",
+      "postgresql": "r'(?i)postgresql://(?:[^:]+:[^@]+@)?[^/\\s]+(?:/[^?\\s]+)?'",
+      "redis": "r'(?i)redis://(?:[^:]+:[^@]+@)?[^/\\s]+(?:/[^?\\s]+)?'"
+    },
+    "pii": {
+      "ssn": "r'\\b\\d{3}-\\d{2}-\\d{4}\\b'",
+      "phone_labeled": "r'(?i)(?:phone|mobile|tel|cell)[\\s:=]+[\\+0-9\\s\\-\\.]{7,15}'",
+      "credit_card": "r'\\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\\d{3})\\d{11})\\b'",
+      "cvv": "r'(?i)(?:cvv|cvc)[\\s:=]+\\b\\d{3,4}\\b'",
+      "dob": "r'(?i)(?:dob|date of birth)[\\s:=]+(?:0[1-9]|1[0-2])[/-](?:0[1-9]|[12][0-9]|3[01])[/-](?:19|20)\\d\\d'"
+    },
+    "cloud_keys": {
+      "aws_key": "r'(?i)AKIA[0-9A-Z]{16}'",
+      "aws_secret": "r'(?i)(?:aws_secret|secret_key)[\\s:=]+[0-9a-zA-Z/+]{40}'",
+      "gcp_key": "r'(?i)AIza[0-9A-Za-z\\-_]{35}'"
+    },
+    "crypto": {
+      "crypto_labeled": "r'(?i)(?:wallet|address|bitcoin|btc|eth|monero)[\\s:=]+(?:[13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-zA-Z0-9]{39,59}|0x[a-fA-F0-9]{40}|4[0-9AB][1-9A-HJ-NP-Za-km-z]{93})'",
+      "bitcoin_address": "r'\\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\\b|\\bbc1[a-za-z0-9]{39,59}\\b'",
+      "ethereum_address": "r'\\b0x[a-fA-F0-9]{40}\\b'",
+      "monero_address": "r'\\b4[0-9AB][1-9A-HJ-NP-Za-km-z]{93}\\b'"
+    },
+    "api_keys": {
+      "generic_api_key": "r'(?i)(?:api_key|apikey|token|secret|auth|bearer)[_-]?[\\s:=]+[a-zA-Z0-9_\\-\\+\\/]{16,128}'",
+      "private_key": "r'-----BEGIN (?:RSA|OPENSSH|PGP) PRIVATE KEY-----'"
+    }
+  },
+  "threat_keywords": [
+    "dump", "leak", "database", "password", "credentials", "combo", 
+    "exposed", "unauthorized", "sql", "backup", "config", "private_key", 
+    "secret", "vulnerab", "exploit", "hack", "breach", "pwned", "dox",
+    "botnet", "malware", "ransomware", "carding", "cvv"
+  ]
+}

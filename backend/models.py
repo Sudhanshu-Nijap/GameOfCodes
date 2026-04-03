@@ -21,9 +21,11 @@ class ScrapedResult(BaseModel):
     url: str
     description: str
     snippet: Optional[str] = None
+    full_text: Optional[str] = ""
     score: float = 0.0
     matched_keywords: List[str] = []
     metadata: Dict[str, Any] = {}
+    leaked_data: Dict[str, List[str]] = {}
     emails: List[str] = []
     documents: List[str] = []
     images: List[str] = []

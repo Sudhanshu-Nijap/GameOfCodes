@@ -25,7 +25,7 @@ LEAK_PATTERNS = {
     "ethereum": r'\b0x[a-fA-F0-9]{40}\b',
     "api_key": r'(?:api|secret|token|key)[_-]?(\b[a-zA-Z0-9]{32,64}\b)',
     "private_key": r'-----BEGIN (?:RSA|OPENSSH) PRIVATE KEY-----',
-    "phone": r'\b\+?[1-9]\d{1,14}\b'
+    "phone": r'\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b'
 }
 
 class DarkDumpScraper:
@@ -55,10 +55,10 @@ class DarkDumpScraper:
         return {'User-Agent': random.choice(USER_AGENTS)}
 
     def clean_html(self, soup: BeautifulSoup) -> str:
-        """Removes noise (scripts, styles, nav) to focus on content for intelligence scoring."""
-        for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+        """Removes underlying code noise but strictly preserves all page readable text layout."""
+        for tag in soup(["script", "style", "noscript"]):
             tag.decompose()
-        return " ".join(soup.get_text(separator=" ", strip=True).split())
+        return "\n".join([line.strip() for line in soup.get_text(separator="\n", strip=True).splitlines() if line.strip()])
 
     async def _search_ahmia_async(self, query: str, amount: int) -> List[Dict]:
         """Internal async method for Playwright-based search discovery with stealth."""
@@ -162,34 +162,98 @@ class DarkDumpScraper:
 
     def extract_intel(self, soup: BeautifulSoup, url: str) -> Dict[str, Any]:
         """Unified extraction logic for intelligence gathering."""
+        # 0. Load Threat Patterns (Categorized)
+        try:
+            config_path = os.path.join(os.path.dirname(__file__), '..', 'threat_config.json')
+            with open(config_path, 'r') as f:
+                threat_config = json.load(f)
+        except Exception as e:
+            print(f"[Threat:Error] Config load failed: {e}")
+            threat_config = {"leak_patterns": {}, "threat_keywords": []}
+
         # 1. Basic Metadata
         metadata = {
-            "title": soup.title.string if soup.title else "Untitled",
+            "title": soup.title.string.strip() if soup.title and soup.title.string else "Untitled",
             "description": "",
             "keywords": [],
             "author": "",
-            "og_title": "",
-            "og_description": ""
+            "fonts": []
         }
         
         for meta in soup.find_all('meta'):
             name = meta.get('name', '').lower()
-            prop = meta.get('property', '').lower()
             cont = meta.get('content', '')
-            if name == 'description': metadata['description'] = cont
-            elif name == 'keywords': metadata['keywords'] = [k.strip() for k in cont.split(',')]
-            elif name == 'author': metadata['author'] = cont
-            elif prop == 'og:title': metadata['og_title'] = cont
-            elif prop == 'og:description': metadata['og_description'] = cont
+            if not cont: continue
+            
+            if name in ['description', 'abstract']: metadata['description'] = cont
+            elif name in ['keywords', 'tags']: metadata['keywords'] = [k.strip() for k in cont.split(',')]
+            elif name in ['author', 'creator']: metadata['author'] = cont
 
-        # 2. Text Intelligence & Leak Detection
+        if not metadata['description']:
+            for p in soup.find_all('p'):
+                text = p.get_text(separator=' ', strip=True)
+                if len(text) > 30:
+                    metadata['description'] = (text[:200] + "...") if len(text) > 200 else text
+                    break
+
+        if metadata['title'] == "Untitled":
+            h1 = soup.find('h1')
+            if h1: metadata['title'] = h1.get_text(strip=True)[:100]
+
+        fonts_found = set()
+        for link in soup.find_all('link', href=True):
+            href = link.get('href', '')
+            if 'font' in href.lower() or 'googleapis.com/css' in href.lower():
+                fonts_found.add(href)
+        
+        for style in soup.find_all('style'):
+            if style.string:
+                for match in re.findall(r'font-family:\s*([^;\}]+)', style.string, re.I):
+                    fonts_found.add(match.strip().strip("'\""))
+
+        for tag in soup.find_all(style=re.compile(r'font-family:', re.I)):
+            for match in re.findall(r'font-family:\s*([^;]+)', tag.get('style', ''), re.I):
+                fonts_found.add(match.strip().strip("'\""))
+
+        metadata['fonts'] = list(fonts_found)[:20]
+
+        # 2. Text Intelligence & Deep Leak Detection
         text_content = self.clean_html(soup)
         title = metadata["title"]
-        detected_leaks = {}
+        
+        # We categorize leaks based on the threat_config
+        leaked_data = {}
+        
+        # Legacy/Standard patterns first
         for leak_type, pattern in LEAK_PATTERNS.items():
             matches = list(set(re.findall(pattern, text_content, re.IGNORECASE)))
             if matches:
-                detected_leaks[leak_type] = matches
+                leaked_data[leak_type] = matches
+
+        # Specialized categorized patterns from JSON
+        patterns = threat_config.get("leak_patterns", {})
+        for category, cat_patterns in patterns.items():
+            if category not in leaked_data:
+                leaked_data[category] = []
+            
+            for p_name, p_raw in cat_patterns.items():
+                try:
+                    # The patterns in JSON are strings like "r'...'". We need to eval or strip.
+                    # Strip "r'" and "'"
+                    p_clean = p_raw.strip().lstrip("r'").rstrip("'")
+                    matches = list(set(re.findall(p_clean, text_content, re.IGNORECASE)))
+                    if matches:
+                        # Normalize matches (flattening tuples if needed)
+                        flat_matches = []
+                        for m in matches:
+                            if isinstance(m, tuple): flat_matches.append(":".join(m))
+                            else: flat_matches.append(str(m))
+                        leaked_data[category].extend(flat_matches)
+                except Exception as e:
+                    print(f"[Threat:PatternErr] {category}/{p_name}: {e}")
+
+        # Final cleanup of leaked_data (unique values)
+        leaked_data = {k: list(set(v)) for k, v in leaked_data.items() if v}
 
         # 3. Image Evidence extraction
         images = []
@@ -208,10 +272,14 @@ class DarkDumpScraper:
                 if abs_href not in internal_links:
                     internal_links.append(abs_href)
 
+        # Inject discovered onion links into leaked data directly
+        if internal_links:
+            leaked_data['onion_links'] = internal_links[:50]
+
         return {
             "title": title,
             "text": text_content,
-            "leaks": detected_leaks,
+            "leaks": leaked_data,
             "metadata": metadata,
             "images": list(dict.fromkeys(images))[:10],
             "internal_links": internal_links[:50]
@@ -295,16 +363,16 @@ class DarkDumpScraper:
                 url=url,
                 description=intel["metadata"].get('description', "Shadow intelligence index"),
                 snippet=snippet or intel["text"][:200],
+                full_text=intel["text"],
                 score=score,
                 matched_keywords=matched_kws,
+                leaked_data=intel["leaks"],
                 metadata={
                     **intel["metadata"], 
                     **ai_tags,
-                    "leaks": list(intel["leaks"].keys()),
-                    "discovery_count": len(intel["internal_links"]),
-                    "method": "playwright" if use_js else "requests"
+                    "leaks": intel["leaks"]
                 },
-                emails=intel["leaks"].get("email", []),
+                emails=intel["leaks"].get("emails", intel["leaks"].get("email", [])),
                 images=intel["images"]
             )
         except Exception as e:

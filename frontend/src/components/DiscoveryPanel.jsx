@@ -193,11 +193,13 @@ const DiscoveryCard = ({ site, onDelete }) => {
 
           {tab === 'meta' && (
             <div className="d-meta">
-              {Object.keys(site.metadata_json || {}).length === 0 ? (
+              {Object.keys(site.metadata_json || {}).filter(k => !['og_title', 'og_description', 'discovery_count'].includes(k.toLowerCase())).length === 0 ? (
                 <p className="faded-text">No metadata extracted.</p>
               ) : (
                 <div className="meta-grid">
-                  {Object.entries(site.metadata_json || {}).map(([k, v]) => (
+                  {Object.entries(site.metadata_json || {})
+                    .filter(([k]) => !['og_title', 'og_description', 'discovery_count'].includes(k.toLowerCase()))
+                    .map(([k, v]) => (
                     <div key={k} className="meta-tag">
                       <strong>{k}</strong>
                       <span>{typeof v === 'string' ? v : JSON.stringify(v)}</span>
