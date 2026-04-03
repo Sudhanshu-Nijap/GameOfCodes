@@ -1,15 +1,13 @@
 import os
 from groq import Groq
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+from fastapi import FastAPI
+from pydantic import BaseModel
 load_dotenv()
 import json
 api_key = os.getenv("GROQ_API_KEY")
 
 client = Groq(api_key=api_key)
-
-
-app = Flask(__name__)
 
 SYSTEM_PROMPT = """
 You are an organization data breach analyzer.
@@ -62,16 +60,12 @@ def input_info_process(user_input):
     except json.JSONDecodeError:
         return {"error": "Invalid JSON", "raw": raw}
 
-@app.route('/process-input', methods=['POST'])
-def process_input():
-    body = request.get_json()
+app = FastAPI()
 
-    if not body or 'text' not in body:
-        return jsonify({"error": "Missing 'text' field in request body"}), 400
+class InputBody(BaseModel):
+    text: str
 
-    result = input_info_process(body['text'])
-    return jsonify(result)
-
-
-if __name__ == '__main__':
-    app.run(port=5003, debug=True)
+@app.post('/analyze')
+async def analyze(body: InputBody):
+    result = input_info_process(body.text)
+    return result  

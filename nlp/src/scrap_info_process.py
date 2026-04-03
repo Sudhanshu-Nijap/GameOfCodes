@@ -3,12 +3,11 @@ from groq import Groq
 from dotenv import load_dotenv
 load_dotenv()
 import json
-from flask import Flask, request, jsonify
+from fastapi import FastAPI
+from pydantic import BaseModel
 api_key = os.getenv("GROQ_API_KEY")
 
 client = Groq(api_key=api_key)
-
-app = Flask(__name__)
 
 SYSTEM_PROMPT = """You are a dark web data analyzer for organizational threat intelligence.
 
@@ -57,16 +56,12 @@ def scrap_info_process(user_input):
         return {"error": "Invalid JSON", "raw": raw}
 
 
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    body = request.get_json()
+app = FastAPI()
 
-    if not body or 'text' not in body:
-        return jsonify({"error": "Missing 'text' field in request body"}), 400
+class InputBody(BaseModel):
+    text: str
 
-    result = scrap_info_process(body['text'])
-    return jsonify(result)
-
-
-if __name__ == '__main__':
-    app.run(port=5002, debug=True)
+@app.post('/analyze')
+async def analyze(body: InputBody):
+    result = scrap_info_process(body.text)
+    return result 
