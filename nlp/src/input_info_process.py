@@ -3,6 +3,7 @@ from groq import Groq
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 load_dotenv()
 import json
 api_key = os.getenv("GROQ_API_KEY")
@@ -62,10 +63,18 @@ def input_info_process(user_input):
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # your React port
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class InputBody(BaseModel):
     text: str
 
-@app.post('/analyze')
-async def analyze(body: InputBody):
+@app.post('/process-input')
+async def process_input(body: InputBody):
     result = input_info_process(body.text)
     return result  
+
