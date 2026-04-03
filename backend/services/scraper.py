@@ -36,7 +36,12 @@ class DarkDumpScraper:
             'http': f'socks5h://127.0.0.1:{self.tor_port}',
             'https': f'socks5h://127.0.0.1:{self.tor_port}'
         } if self.tor_port else {}
-        self.ahmia_base = "https://ahmia.fi"
+        
+        if self.use_tor and self.tor_port:
+            self.ahmia_base = "http://juhanurmihxlp77nkq76byazcldy2hlmovfu2epvl5ankdibsot4csyd.onion"
+        else:
+            self.ahmia_base = "https://ahmia.fi"
+            
         self.ahmia_search = f"{self.ahmia_base}/search/?q="
 
     def _detect_tor_port(self) -> Optional[int]:
