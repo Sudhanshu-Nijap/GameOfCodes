@@ -21,6 +21,7 @@ import {
   Clock,
   Lock,
   User,
+  Database,
   DollarSign
 } from 'lucide-react';
 import './Dashboard.css';
@@ -44,7 +45,7 @@ const Dashboard = () => {
     if (polling && taskId) {
       intervalId = setInterval(async () => {
         try {
-          const res = await fetch(`http://localhost:8000/api/tasks/${taskId}`);
+          const res = await fetch(`http://localhost:8001/api/tasks/${taskId}`);
           if (res.ok) {
             const taskData = await res.json();
             if (taskData.status === 'completed') {
@@ -73,7 +74,7 @@ const Dashboard = () => {
     setResult(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/nlp/intelligent-search', {
+      const res = await fetch('http://127.0.0.1:8001/api/nlp/intelligent-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: query })
@@ -107,7 +108,7 @@ const Dashboard = () => {
     setError(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/intel/quick-scrape', {
+      const res = await fetch('http://localhost:8001/api/intel/quick-scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -354,7 +355,7 @@ const Dashboard = () => {
                         selectedIntel.images.map((img, i) => (
                           <div key={i} className="intel-img-wrapper" style={{ aspectRatio: '1', background: '#111', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
                             <img 
-                              src={`http://localhost:8000/api/proxy-image?url=${encodeURIComponent(img)}`} 
+                              src={`http://localhost:8001/api/proxy-image?url=${encodeURIComponent(img)}`} 
                               alt="extracted-intel" 
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />

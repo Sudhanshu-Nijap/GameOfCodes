@@ -64,7 +64,11 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     print("── VALIDATION ERROR ──")
     print(exc.errors())
     print("─────────────────────")
-    return Response(content=str(exc.errors()), status_code=422)
+    return Response(
+        content=str(exc.errors()), 
+        status_code=422,
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
 
 
 @app.exception_handler(Exception)
@@ -72,14 +76,21 @@ async def global_exception_handler(request: Request, exc: Exception):
     print("── GLOBAL ERROR ──")
     traceback.print_exc()
     print("──────────────────")
-    return Response(content=f"Internal Server Error: {str(exc)}", status_code=500)
+    return Response(
+        content=f"Internal Server Error: {str(exc)}", 
+        status_code=500,
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
 
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,27 +109,36 @@ scraper = DarkDumpScraper(use_tor=True)
 
 @app.post("/api/auth/register", response_model=UserResponse)
 def register(user: UserCreate):
+    print(f"[Auth:Register] Attempting registration for {user.email}")
     users_coll = get_users_collection()
     if users_coll is None:
+        print("[Auth:Register] Database collection 'users' not reachable.")
         raise HTTPException(status_code=503, detail="Database connection unavailable")
         
     if users_coll.find_one({"email": user.email}):
+        print(f"[Auth:Register] Email {user.email} already exists.")
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    user_dict = user.model_dump()
-    user_dict["password"] = get_password_hash(user_dict["password"])
-    user_dict["id"] = str(uuid.uuid4())
-    user_dict["created_at"] = datetime.datetime.utcnow()
-    
-    users_coll.insert_one(user_dict)
-    
-    return UserResponse(
-        id=user_dict["id"],
-        first_name=user_dict["first_name"],
-        last_name=user_dict["last_name"],
-        organization_name=user_dict["organization_name"],
-        email=user_dict["email"]
-    )
+    try:
+        user_dict = user.model_dump()
+        user_dict["password"] = get_password_hash(user_dict["password"])
+        user_dict["id"] = str(uuid.uuid4())
+        user_dict["created_at"] = datetime.datetime.utcnow()
+        
+        users_coll.insert_one(user_dict)
+        print(f"[Auth:Register] User {user.email} successfully created.")
+        
+        return UserResponse(
+            id=user_dict["id"],
+            first_name=user_dict["first_name"],
+            last_name=user_dict["last_name"],
+            organization_name=user_dict["organization_name"],
+            email=user_dict["email"]
+        )
+    except Exception as e:
+        print(f"[Auth:Register] CRITICAL ERROR: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/api/auth/login", response_model=Token)
 def login(user_credentials: UserLogin):
@@ -567,4 +587,4 @@ def intelligent_search(body: NLPInputBody, bg: BackgroundTasks):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=True)

@@ -24,6 +24,16 @@ _db_error = None
 
 def get_client():
     global _client, _db_error
+    
+    # If client exists, check if it's still alive
+    if _client is not None:
+        try:
+            _client.admin.command('ping')
+            return _client
+        except Exception:
+            print("[MongoDB] Connection lost. Re-establishing...")
+            _client = None
+
     if _client is None:
         try:
             # Note: Requires 'dnspython' for +srv records

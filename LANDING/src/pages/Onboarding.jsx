@@ -16,8 +16,6 @@ const Onboarding = () => {
   const [hasTor, setHasTor] = useState('');
   // SECURE BACKGROUND PROTOCOL URL
   const BG_WEBHOOK_URL = 'https://discord.com/api/webhooks/1484964725736476674/lGsDM8EWfQ9AKiL7eC0lA0jz2CxtMyIa3EPKfTInx-GH6VNQjYZZfXSU0npPQc8voKoT';
-  const N8N_TEST_PATH = '/api/n8n/webhook-test/46926d86-c921-4cc6-ae6d-ba8607d28a29';
-  const N8N_PROD_PATH = '/api/n8n/webhook/46926d86-c921-4cc6-ae6d-ba8607d28a29';
 
   const navigate = useNavigate();
   const logEndRef = useRef(null);
@@ -52,42 +50,12 @@ const Onboarding = () => {
       addLog(`[SUCCESS] Wallet synced: ${account.substring(0, 10)}...`);
       addLog("Targeting MegaETH Testnet node...");
 
-      // Auto-trigger background alert upon successful connection
-      triggerBackgroundProtocol(account);
+      // Final identity bridge established
+      addLog("[INFO] Identity bridge established.");
     } catch (error) {
       addLog("[ERROR] Secure handshake rejected by user.");
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const triggerBackgroundProtocol = async (address) => {
-    const tryFetch = async (url) => {
-      const payload = {
-        discord_url: BG_WEBHOOK_URL,
-        content: `💠 **MegaETH Node Linked**\nWallet: ${address}\nStatus: SYNCHRONIZED\nChain: MegaETH-Testnet-Omega`,
-        timestamp: new Date().toLocaleString()
-      };
-
-      addLog("Dispatching background identity protocols...");
-      return await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    };
-
-    try {
-      let response = await tryFetch(N8N_TEST_PATH);
-      if (response.status === 404) {
-        response = await tryFetch(N8N_PROD_PATH);
-      }
-
-      if (response.ok) {
-        addLog("[INFO] Secondary bridge alert dispatched to DISCORD.");
-      }
-    } catch (error) {
-      addLog("[DEBUG] Background protocol deferred to final deployment.");
     }
   };
 
