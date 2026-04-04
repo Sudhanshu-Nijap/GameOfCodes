@@ -61,20 +61,3 @@ def input_info_process(user_input):
     except json.JSONDecodeError:
         return {"error": "Invalid JSON", "raw": raw}
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # your React port
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class InputBody(BaseModel):
-    text: str
-
-@app.post('/process-input')
-async def process_input(body: InputBody):
-    result = input_info_process(body.text)
-    return result  
-

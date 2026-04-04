@@ -1,14 +1,42 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../Auth.css';
 import '../App.css';
 
 const Login = () => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    navigate('/onboarding');
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.detail || 'Login failed');
+      }
+      
+      localStorage.setItem('auth_token', data.access_token);
+      navigate('/onboarding');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,14 +54,16 @@ const Login = () => {
         <h2 className="auth-title">Welcome Back</h2>
         <p className="auth-sub">Enter your credentials to access your console.</p>
         
+        {error && <div className="error-message" style={{color: '#ff4d4f', marginBottom: '1rem', textAlign: 'center'}}>{error}</div>}
+
         <form onSubmit={handleLogin} className="auth-form">
           <div className="input-group">
             <label>Work Email</label>
-            <input type="email" placeholder="admin@organization.com" required className="premium-input"/>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@organization.com" required className="premium-input"/>
           </div>
           <div className="input-group">
             <label>Password</label>
-            <input type="password" placeholder="••••••••" required className="premium-input"/>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="premium-input"/>
           </div>
           
           <div className="auth-options">
@@ -43,7 +73,9 @@ const Login = () => {
             <a href="#" className="forgot-password">Forgot password?</a>
           </div>
           
-          <button type="submit" className="btn btn-primary auth-btn">Sign In to Console</button>
+          <button type="submit" disabled={loading} className="btn btn-primary auth-btn">
+            {loading ? 'Authenticating...' : 'Sign In to Console'}
+          </button>
         </form>
         
         <div className="auth-footer">

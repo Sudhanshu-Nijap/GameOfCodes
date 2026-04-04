@@ -38,7 +38,7 @@ def url_hash(url: str) -> str:
 
 # ── Main Celery Task ──────────────────────────────────────────────────────────
 
-@celery_app.task(name="scrape_onion_task", bind=True, max_retries=0)
+@celery_app.task(name="scrape_onion_task", bind=True, max_retries=3)
 def scrape_onion_task(self, url: str, current_depth: int = 0, max_depth: int = 1,
                       parent_url: str = "", use_js: bool = True):
     """
@@ -55,11 +55,16 @@ def scrape_onion_task(self, url: str, current_depth: int = 0, max_depth: int = 1
     try:
         # ── Deduplication check ───────────────────────────────────────────
         existing = coll.find_one({"crawl_hash": url_h})
-        if existing:
-            print(f"[Dedup] Skipping already-indexed URL: {url}")
-            return f"SKIPPED (duplicate): {url}"
+        is_retry = self.request.retries > 0
+        
+        # We only strictly skip if it's a completely fresh task encountering a 'completed' record.
+        # Failed or running records should be allowed to process (e.g. user retries or Celery retries).
+        if existing and not is_retry:
+            if existing.get("status") == "completed":
+                print(f"[Dedup] Skipping already-indexed URL: {url}")
+                return f"SKIPPED (duplicate): {url}"
 
-        # ── Create DB record (pending → running) ──────────────────────────
+        # ── Create or Reset DB record (pending → running) ─────────────────
         record = {
             "url": url,
             "crawl_hash": url_h,
@@ -76,15 +81,21 @@ def scrape_onion_task(self, url: str, current_depth: int = 0, max_depth: int = 1
             "parent_url": parent_url,
             "timestamp": datetime.datetime.utcnow(),
         }
-        coll.insert_one(record)
+        coll.update_one({"crawl_hash": url_h}, {"$set": record}, upsert=True)
 
         # ── Optimized Fetch & Parse ───────────────────────────────────────
         result = scraper.scrape_onion(url, use_js=use_js)
 
         if not result:
+            if self.request.retries < self.max_retries:
+                backoff = RETRY_BACKOFF[self.request.retries] if self.request.retries < len(RETRY_BACKOFF) else 60
+                print(f"[Retry] Connection failed for {url}. Retrying in {backoff}s...")
+                # We do NOT update MongoDB here; leave it as 'running'
+                raise self.retry(countdown=backoff)
+
             coll.update_one(
                 {"crawl_hash": url_h},
-                {"$set": {"status": "failed", "title": "Unreachable", "failed_reason": "Scraper returned None"}}
+                {"$set": {"status": "failed", "title": "Unreachable", "failed_reason": "Target unreachable over Tor after 3 retries."}}
             )
             print(f"[Task] FAILED: {url}")
             return f"FAILED: {url}"
@@ -92,7 +103,7 @@ def scrape_onion_task(self, url: str, current_depth: int = 0, max_depth: int = 1
         # ── Persist results ───────────────────────────────────────────────
         update_data = {
             "title":          result.title,
-            "text_content":   result.description,
+            "text_content":   result.full_text,  # Full body text preservation
             "images":         result.images,
             "links":          result.metadata.get("internal_links", []),
             "metadata_json":  result.metadata, # This now contains 'emails', 'documents', 'pii_detected', etc.
@@ -127,6 +138,10 @@ def scrape_onion_task(self, url: str, current_depth: int = 0, max_depth: int = 1
         return f"SUCCESS: {url}"
 
     except Exception as e:
+        from celery.exceptions import Retry
+        if isinstance(e, Retry):
+            raise
+            
         import traceback
         traceback.print_exc()
         try:

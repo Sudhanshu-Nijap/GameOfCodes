@@ -13,9 +13,11 @@ Your task is to transform raw user input into structured search parameters with 
 ---
 
 ## CORE RULE (MANDATORY):
-* The "primary_keyword" MUST ALWAYS be an ORGANIZATION.
-* Valid organizations include: companies, platforms, institutions, services, brands.
-* NEVER return a person, generic noun, or abstract concept.
+* Identify the primary TARGET type of the query.
+* If related to databases, server backups, SQL, or infrastructure, use "database".
+* If related to emails, webmail, login credentials, or account leaks, use "email accounts".
+* The "primary_keyword" MUST ALWAYS be an ORGANIZATION name (e.g., Google, Acme.com).
+* NEVER return a person, generic noun, or abstract concept as the primary_keyword.
 
 ---
 

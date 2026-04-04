@@ -1,4 +1,7 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
 os.environ["USE_TORCH"] = "1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
@@ -21,7 +24,16 @@ from models import (
     IntelRequest,
     SearchRequest,
     SearchTask,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    Token
 )
+from pydantic import BaseModel
+
+class NLPInputBody(BaseModel):
+    text: str
+
 from services.scraper import DarkDumpScraper
 
 try:
@@ -73,18 +85,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── In-memory search task store ───────────────────────────────────────────────
+from database import get_db, get_collection, get_tasks_collection, get_intel_collection, get_users_collection, init_indexes
+from services.auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from datetime import timedelta
 
-tasks_db: Dict[str, SearchTask] = {}
+# ── Persistent Stores (Removed in-memory tasks_db) ───────────────────────────
 # Standardized to use Tor by default for .onion searches
 scraper = DarkDumpScraper(use_tor=True)
+
+
+# ── Auth endpoints ────────────────────────────────────────────────────────────
+
+@app.post("/api/auth/register", response_model=UserResponse)
+def register(user: UserCreate):
+    users_coll = get_users_collection()
+    if users_coll is None:
+        raise HTTPException(status_code=503, detail="Database connection unavailable")
+        
+    if users_coll.find_one({"email": user.email}):
+        raise HTTPException(status_code=400, detail="Email already registered")
+        
+    user_dict = user.model_dump()
+    user_dict["password"] = get_password_hash(user_dict["password"])
+    user_dict["id"] = str(uuid.uuid4())
+    user_dict["created_at"] = datetime.datetime.utcnow()
+    
+    users_coll.insert_one(user_dict)
+    
+    return UserResponse(
+        id=user_dict["id"],
+        first_name=user_dict["first_name"],
+        last_name=user_dict["last_name"],
+        organization_name=user_dict["organization_name"],
+        email=user_dict["email"]
+    )
+
+@app.post("/api/auth/login", response_model=Token)
+def login(user_credentials: UserLogin):
+    users_coll = get_users_collection()
+    if users_coll is None:
+        raise HTTPException(status_code=503, detail="Database connection unavailable")
+        
+    user = users_coll.find_one({"email": user_credentials.email})
+    if not user or not verify_password(user_credentials.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user["email"]}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 # ── Search endpoints ──────────────────────────────────────────────────────────
 
 async def run_search_task(task_id: str, request: SearchRequest):
-    task = tasks_db[task_id]
-    task.status = "running"
+    tasks_coll = get_tasks_collection()
+    if tasks_coll is None:
+        print("[Error] Could not access tasks collection.")
+        return
+
+    # Update status to running
+    tasks_coll.update_one({"id": task_id}, {"$set": {"status": "running"}})
 
     query_params = {
         "primary": request.primary_keyword, 
@@ -113,8 +175,7 @@ async def run_search_task(task_id: str, request: SearchRequest):
         raw_results = scraper.search_ahmia(query, amount=request.amount)
 
         if not raw_results:
-            task.results = []
-            task.status = "completed"
+            tasks_coll.update_one({"id": task_id}, {"$set": {"status": "completed", "results": []}})
             return
 
         from services.scoring import calculate_relevance_score
@@ -176,12 +237,13 @@ async def run_search_task(task_id: str, request: SearchRequest):
 
         # ── Sort by Score (Descending) ────────────────────────────────────────
         final_results.sort(key=lambda x: x.score, reverse=True)
-        task.results = final_results
-        task.status = "completed"
+        
+        # Serialize results for MongoDB
+        serialized_results = [r.model_dump() for r in final_results]
+        tasks_coll.update_one({"id": task_id}, {"$set": {"status": "completed", "results": serialized_results}})
 
     except Exception as e:
-        task.status = "failed"
-        task.error = str(e)
+        tasks_coll.update_one({"id": task_id}, {"$set": {"status": "failed", "error": str(e)}})
         traceback.print_exc()
 
 
@@ -191,7 +253,13 @@ from fastapi import BackgroundTasks
 def start_search(request: SearchRequest, bg: BackgroundTasks):
     task_id = str(uuid.uuid4())
     task = SearchTask(id=task_id, status="pending")
-    tasks_db[task_id] = task
+    
+    tasks_coll = get_tasks_collection()
+    if tasks_coll is not None:
+        task_doc = task.model_dump()
+        task_doc["timestamp"] = datetime.datetime.utcnow()
+        tasks_coll.insert_one(task_doc)
+        
     bg.add_task(run_search_task, task_id, request)
     return task
 
@@ -202,6 +270,22 @@ def quick_scrape(request: IntelRequest):
     POST /api/intel/quick-scrape
     Performs a deep, synchronous (with UI wait) scrape of a single .onion URL.
     """
+    # ── 1. Check Cache ──────────────────────────────────────────────────────────
+    intel_coll = get_intel_collection()
+    if intel_coll is not None:
+        cached = intel_coll.find_one({"url": request.url})
+        if cached:
+            # Check if it has a summary or detailed analysis (indicating it was successfully analyzed)
+            has_analysis = cached.get("detailed_analysis") and cached["detailed_analysis"].get("summary")
+            if has_analysis:
+                print(f"[Intel:Cache] Returning stored intelligence for {request.url}")
+                # Remove _id for Pydantic validation if present
+                if "_id" in cached: cached.pop("_id")
+                # Remove sensitive full_text from cache if we want to follow the same obfuscation
+                cached["full_text"] = "CACHED INTELLIGENCE: Securely retrieved from local neural repository."
+                return ScrapedResult.model_validate(cached)
+
+    # ── 2. Perform Scrape ───────────────────────────────────────────────────────
     print(f"[Intel:Quick] Deep scraping target: {request.url}")
     result = scraper.scrape_onion(
         url=request.url,
@@ -213,19 +297,64 @@ def quick_scrape(request: IntelRequest):
     if not result:
         raise HTTPException(status_code=404, detail="Target unreachable or intelligence extraction failed.")
         
+    # ── 3. Analyze content ─────────────────────────────────────────────────────
+    from services.intel_analyzer import analyze_scraped_content
+    
+    if result.full_text:
+        text_len = len(result.full_text)
+        print(f"[Intel:Quick] Analysis triggered for {result.url} (Text length: {text_len} chars)")
+        analysis_dict = analyze_scraped_content(result.full_text)
+        from models import DetailedAnalysis
+        # Parse the raw dict into the properly typed model so it serializes cleanly
+        result.detailed_analysis = DetailedAnalysis(**analysis_dict)
+    else:
+        print(f"[Intel:Quick] NO CONTENT to analyze for {result.url}")
+        from models import DetailedAnalysis
+        result.detailed_analysis = DetailedAnalysis(summary="No extractable text content was found on this node to perform intelligence analysis.")
+
+    # ── 4. Persistence ─────────────────────────────────────────────────────────
+    if intel_coll is not None:
+        report_doc = result.model_dump()
+        report_doc["timestamp"] = datetime.datetime.utcnow()
+        intel_coll.update_one({"url": result.url}, {"$set": report_doc}, upsert=True)
+
+    # ── 5. Redaction for Frontend ──────────────────────────────────────────────
+    result.full_text = "CLASSIFIED: Raw scraped intelligence has been securely deposited into the database for neural analysis. Direct text preview disabled per security policy."
+    result.snippet = ""
+    result.description = "Classified node content."
+
     return result
 
 
 @app.get("/api/tasks/{task_id}", response_model=SearchTask)
 def get_task(task_id: str):
-    if task_id not in tasks_db:
+    tasks_coll = get_tasks_collection()
+    if tasks_coll is None:
+        raise HTTPException(status_code=503, detail="Database connection unavailable")
+        
+    task_doc = tasks_coll.find_one({"id": task_id})
+    if not task_doc:
         raise HTTPException(status_code=404, detail="Task not found")
-    return tasks_db[task_id]
+        
+    # Clean up _id for Pydantic
+    task_doc["id"] = str(task_doc.get("id"))
+    if "_id" in task_doc: task_doc.pop("_id")
+    
+    return SearchTask.model_validate(task_doc)
 
 
 @app.get("/api/history", response_model=List[SearchTask])
 def get_history():
-    return [t for t in tasks_db.values() if t.status == "completed"]
+    tasks_coll = get_tasks_collection()
+    if tasks_coll is None:
+        return []
+        
+    cursor = tasks_coll.find({"status": "completed"}).sort("timestamp", -1).limit(50)
+    results = []
+    for doc in cursor:
+        if "_id" in doc: doc.pop("_id")
+        results.append(SearchTask.model_validate(doc))
+    return results
 
 
 # ── Proxy image ───────────────────────────────────────────────────────────────
@@ -392,6 +521,46 @@ def parse_query(query: str, use_groq: bool = True):
         raise HTTPException(status_code=503, detail="Groq NLP engine unavailable")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/nlp/intelligent-search")
+def intelligent_search(body: NLPInputBody, bg: BackgroundTasks):
+    from services.nlp_intelligent import process_nlp_input
+    
+    nlp_result = process_nlp_input(body.text)
+    if "error" in nlp_result:
+        raise HTTPException(status_code=500, detail=nlp_result["error"])
+        
+    target_words = nlp_result.get("target_words", body.text)
+    organization = nlp_result.get("organization", "")
+    
+    secondary = []
+    if organization:
+        secondary.append(organization)
+    
+    secondary.extend(nlp_result.get("related_terms", []))
+    
+    request = SearchRequest(
+        primary_keyword=target_words,
+        secondary_keywords=secondary,
+        use_nlp=False
+    )
+    
+    task_id = str(uuid.uuid4())
+    task = SearchTask(id=task_id, status="pending")
+    
+    tasks_coll = get_tasks_collection()
+    if tasks_coll is not None:
+        task_doc = task.model_dump()
+        task_doc["timestamp"] = datetime.datetime.utcnow()
+        tasks_coll.insert_one(task_doc)
+        
+    bg.add_task(run_search_task, task_id, request)
+    
+    return {
+        "nlp_analysis": nlp_result,
+        "task_id": task_id,
+        "status": "Search started"
+    }
 
 
 # ── Dev server ────────────────────────────────────────────────────────────────

@@ -16,17 +16,42 @@ class SearchRequest(BaseModel):
     use_groq_nlp: bool = False
 
 
+class ThreatScoreInputs(BaseModel):
+    has_credentials: bool = False
+    has_financial_data: bool = False
+    has_pii: bool = False
+    has_internal_docs: bool = False
+    has_source_code: bool = False
+    is_actively_traded: bool = False
+
+class DetailedAnalysis(BaseModel):
+    data_types_found: List[str] = []
+    threat_sentiment: str = "informational"
+    sentiment_score: int = 0
+    affected_org: str = ""
+    exposure_level: str = "none"
+    data_volume: str = "low"
+    freshness: str = "unknown"
+    risk_score: int = 0
+    threat_score_inputs: ThreatScoreInputs = Field(default_factory=ThreatScoreInputs)
+    summary: str = ""
+    detailed_analysis: str = ""
+    error: Optional[str] = None
+
 class ScrapedResult(BaseModel):
     title: str
     url: str
     description: str
     snippet: Optional[str] = None
+    full_text: Optional[str] = ""
     score: float = 0.0
     matched_keywords: List[str] = []
     metadata: Dict[str, Any] = {}
+    leaked_data: Dict[str, List[str]] = {}
     emails: List[str] = []
     documents: List[str] = []
     images: List[str] = []
+    detailed_analysis: Optional[DetailedAnalysis] = None
 
 
 class SearchTask(BaseModel):
@@ -81,3 +106,27 @@ class DiscoveryStats(BaseModel):
     total_images: int
     total_links: int
     avg_text_length: int
+
+# ── Auth API ─────────────────────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    first_name: str
+    last_name: str
+    organization_name: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    first_name: str
+    last_name: str
+    organization_name: str
+    email: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
