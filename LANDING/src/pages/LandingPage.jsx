@@ -6,7 +6,6 @@ import HowItWorks from '../components/HowItWorks';
 import DashboardPreview from '../components/DashboardPreview';
 import Pricing from '../components/Pricing';
 import ExpertAccess from '../components/ExpertAccess';
-import CTA from '../components/CTA';
 import Footer from '../components/Footer';
 
 const LandingPage = () => {
@@ -20,7 +19,7 @@ const LandingPage = () => {
         <DashboardPreview />
         <Pricing />
         <ExpertAccess />
-        <CTA />
+        
       </main>
       <Footer />
     </div>

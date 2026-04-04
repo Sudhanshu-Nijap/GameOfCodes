@@ -7,7 +7,7 @@ const Navbar = () => {
     <nav className="navbar glass-panel">
       <div className="navbar-container container">
         <Link to="/" className="navbar-logo" style={{ textDecoration: 'none' }}>
-          <img src="/favicon.svg" alt="Logo" className="nav-logo-img" />
+          <img src="/file.svg" alt="Logo" className="nav-logo-img" />
           <span className="logo-text">WhiteDUMP</span>
         </Link>
         

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import './Dashboard.css';
 import SearchPage from '../components/SearchPage';
+import DashboardPage from '../components/DashboardPage';
 
 const Dashboard = () => {
   const [query, setQuery] = useState('');
@@ -195,9 +196,9 @@ const Dashboard = () => {
         <div className="dashboard-content">
 
           {/* DASHBOARD PAGE */}
-          {activePage === 'dashboard' && (
-            <></>
-          )}
+          {activePage === 'dashboard' && 
+            <DashboardPage />
+          }
 
           {/* SEARCH PAGE */}
           {activePage === 'search' && <SearchPage />}
