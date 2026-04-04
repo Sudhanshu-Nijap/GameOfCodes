@@ -1,0 +1,27 @@
+import os
+from datetime import datetime, timedelta
+import bcrypt
+import jwt
+
+# Secret key to sign JWT token (in production, use a secure random secret and load from env)
+SECRET_KEY = os.getenv("SECRET_KEY", "b4431e5f8f8b8a5fc431ba271a3e6f987cf283d5ad3e8b417e082f42a9693eb1")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+def verify_password(plain_password: str, hashed_password: str):
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def get_password_hash(password: str):
+    # bcrypt.hashpw returns bytes, so we decode it to store as a string in MongoDB
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt

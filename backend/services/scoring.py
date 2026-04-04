@@ -39,56 +39,59 @@ def calculate_relevance_score(
     secondary_matched = False
     primary_score     = 0.0
 
-    # ── 1. PRIMARY KEYWORD ────────────────────────────────────────────────────
+    # ── 1. PRIMARY KEYWORD (Phrase & Word Level) ──────────────────────────────
     if primary_keyword:
         pk = primary_keyword.lower().strip()
 
-        # Title exact match
+        # Exact phrase match (Highest Value)
         if re.search(rf'\b{re.escape(pk)}\b', title_clean):
             primary_score += 50.0
             primary_matched = True
 
-        # Body exact-word count, capped at 10 occurrences (anti-spam)
         body_exact = len(re.findall(rf'\b{re.escape(pk)}\b', body_space))
-        primary_score += min(body_exact, 10) * 5.0
+        primary_score += min(body_exact, 10) * 10.0
         if body_exact > 0:
             primary_matched = True
 
-        # Logarithmic frequency bonus — capped at 15 occurrences
-        freq = min(body_space.count(pk), 15)
-        primary_score += math.log(freq + 1) * 2.0
+        # Break down into individual words
+        for word in pk.split():
+            if len(word) <= 2: continue
+            
+            if re.search(rf'\b{re.escape(word)}\b', title_clean):
+                primary_score += 15.0
+                primary_matched = True
+                
+            word_count = len(re.findall(rf'\b{re.escape(word)}\b', body_space))
+            primary_score += min(word_count, 15) * 3.0
+            if word_count > 0:
+                primary_matched = True
 
         score += primary_score
         if primary_matched:
             matched_keywords.append(primary_keyword)
 
-    # ── 2. SECONDARY KEYWORDS (Only if primary is meaningful) ────────────────
-    # Gate: if primary_score < 10, the document barely mentions the primary
-    # keyword — secondary and synergy bonuses are NOT awarded.
-    if primary_score >= 10.0:
-        for sk in secondary_keywords:
-            if not sk or not sk.strip():
-                continue
-            sk_lower = sk.lower().strip()
-            sk_found = False
+    # ── 2. SECONDARY KEYWORDS (Active without gates) ─────────────────────────
+    for sk in secondary_keywords:
+        if not sk or not sk.strip():
+            continue
+        sk_lower = sk.lower().strip()
+        sk_found = False
 
-            # Title match
-            if re.search(rf'\b{re.escape(sk_lower)}\b', title_clean):
-                score += 20.0
-                sk_found = True
+        if re.search(rf'\b{re.escape(sk_lower)}\b', title_clean):
+            score += 20.0
+            sk_found = True
 
-            # Body match — flat bonus regardless of frequency
-            body_exact_sk = len(re.findall(rf'\b{re.escape(sk_lower)}\b', body_space))
-            if body_exact_sk > 0:
-                score += 5.0
-                sk_found = True
+        body_exact_sk = len(re.findall(rf'\b{re.escape(sk_lower)}\b', body_space))
+        if body_exact_sk > 0:
+            score += min(body_exact_sk, 15) * 5.0
+            sk_found = True
 
-            if sk_found:
-                secondary_matched = True
-                matched_keywords.append(sk)
+        if sk_found:
+            secondary_matched = True
+            matched_keywords.append(sk)
 
-        # ── 3. SYNERGY BONUS ─────────────────────────────────────────────────
-        if primary_matched and secondary_matched:
-            score += 60.0
+    # ── 3. SYNERGY BONUS ─────────────────────────────────────────────────
+    if primary_matched and secondary_matched:
+        score += 60.0
 
     return round(score, 2), list(set(matched_keywords))

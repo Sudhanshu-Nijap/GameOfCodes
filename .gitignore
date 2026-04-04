@@ -36,3 +36,6 @@ desktop.ini
 # Project specific
 backend/ahmia_results.png
 tmp_onion_search/
+
+
+vcpkg/

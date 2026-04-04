@@ -1,12 +1,21 @@
+import os
 import datetime
 from pymongo import MongoClient
 from pymongo.errors import ConfigurationError
 from bson import ObjectId
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── MongoDB Config ────────────────────────────────────────────────────────────
-MONGO_URL = "mongodb+srv://sudhanshun10b3720_db_user:Sudhu%402005@cluster0.d6wfgzt.mongodb.net/?appName=Cluster0"
+MONGO_URL = os.getenv("MONGODB_URI", "mongodb+srv://sudhanshun10b3720_db_user:Sudhu%402005@cluster0.d6wfgzt.mongodb.net/?appName=Cluster0")
 DB_NAME = "darkdump"
-COLLECTION_NAME = "discovery_results"
+
+# Collection Names
+DISCOVERY_COLLECTION = "discovery_results"
+TASKS_COLLECTION = "search_tasks"
+INTEL_COLLECTION = "intel_reports"
+USERS_COLLECTION = "users"
 
 # Singleton-like lazy initialization
 _client = None
@@ -15,6 +24,16 @@ _db_error = None
 
 def get_client():
     global _client, _db_error
+    
+    # If client exists, check if it's still alive
+    if _client is not None:
+        try:
+            _client.admin.command('ping')
+            return _client
+        except Exception:
+            print("[MongoDB] Connection lost. Re-establishing...")
+            _client = None
+
     if _client is None:
         try:
             # Note: Requires 'dnspython' for +srv records
@@ -31,8 +50,6 @@ def get_client():
         except ConfigurationError as e:
             _db_error = f"Database Configuration Error: {str(e)}"
             print(f"\n[CRITICAL ERROR] MongoDB DNS Failure: {e}")
-            print("Tip: Ensure 'dnspython' is installed: pip install dnspython")
-            print("Tip: Check if your network/VPN blocks SRV records.\n")
             return None
         except Exception as e:
             _db_error = f"Database Connection Error: {str(e)}"
@@ -49,11 +66,20 @@ def get_db():
         return _db
     return None
 
-def get_collection():
+def get_collection(name=DISCOVERY_COLLECTION):
     db = get_db()
     if db is not None:
-        return db[COLLECTION_NAME]
+        return db[name]
     return None
+
+def get_tasks_collection():
+    return get_collection(TASKS_COLLECTION)
+
+def get_intel_collection():
+    return get_collection(INTEL_COLLECTION)
+
+def get_users_collection():
+    return get_collection(USERS_COLLECTION)
 
 def get_status():
     """Returns the current database status for the stats API."""
@@ -65,11 +91,29 @@ def get_status():
 
 def init_indexes():
     try:
-        coll = get_collection()
-        if coll is not None:
-            coll.create_index("url", unique=True)
-            coll.create_index("crawl_hash")
-            coll.create_index("timestamp")
-            print("[MongoDB] Indexes verified/created.")
+        db = get_db()
+        if db is not None:
+            # discovery_results indexes
+            disc = db[DISCOVERY_COLLECTION]
+            disc.create_index("url", unique=True)
+            disc.create_index("crawl_hash")
+            disc.create_index("timestamp")
+
+            # search_tasks indexes
+            tasks = db[TASKS_COLLECTION]
+            tasks.create_index("id", unique=True)
+            tasks.create_index("status")
+            tasks.create_index("timestamp")
+
+            # intel_reports indexes
+            intel = db[INTEL_COLLECTION]
+            intel.create_index("url", unique=True)
+            intel.create_index("timestamp")
+
+            # users indexes
+            users = db[USERS_COLLECTION]
+            users.create_index("email", unique=True)
+
+            print("[MongoDB] Indexes verified/created across all collections.")
     except Exception as e:
         print(f"[WARN] Could not create MongoDB indexes: {e}")

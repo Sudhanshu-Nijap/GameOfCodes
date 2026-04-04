@@ -74,7 +74,8 @@ class DarkDumpScraper:
             browser = await pw.chromium.launch(headless=True, args=[
                 "--no-sandbox", 
                 "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled"
+                "--disable-blink-features=AutomationControlled",
+                "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"
             ])
             
             # Use the detected Tor port or fallback to default
@@ -300,11 +301,15 @@ class DarkDumpScraper:
                 browser = await pw.chromium.launch(
                     headless=True,
                     proxy={"server": f"socks5://127.0.0.1:{port}"} if self.use_tor else None,
-                    args=["--no-sandbox", "--disable-dev-shm-usage"]
+                    args=[
+                        "--no-sandbox", 
+                        "--disable-dev-shm-usage",
+                        "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"
+                    ]
                 )
                 page = await browser.new_page()
-                # Use high timeout for Tor
-                await page.goto(url, wait_until="domcontentloaded", timeout=90000)
+                # Use robust wait_until for broken dark web structures
+                await page.goto(url, wait_until="commit", timeout=45000)
                 html = await page.content()
                 await browser.close()
                 return html
